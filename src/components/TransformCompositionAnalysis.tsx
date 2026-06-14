@@ -164,8 +164,15 @@ function classifyGeometricType(m: Matrix2): string {
     return '剪切';
   }
 
-  if (orthogonal) {
-    return '带缩放的旋转';
+  if (det > eps) {
+    const trace = m[0] + m[3];
+    const discriminant = trace * trace - 4 * det;
+    if (discriminant < -eps) {
+      return '带缩放的旋转';
+    }
+    if (Math.abs(m[0] - m[3]) < eps && Math.abs(m[1] + m[2]) < eps) {
+      return '带缩放的旋转';
+    }
   }
 
   return '一般线性变换';
@@ -247,6 +254,36 @@ function EllipseCanvas(props: { analysis: AnalysisResult | null }) {
   const center = size / 2;
   const scale = 80;
 
+  function drawArrow(ctx: CanvasRenderingContext2D, x1: number, y1: number, x2: number, y2: number, color: string, label: string) {
+    const headLength = 10;
+    const angle = Math.atan2(y2 - y1, x2 - x1);
+    
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(x2, y2);
+    ctx.lineTo(x2 - headLength * Math.cos(angle - Math.PI / 6), y2 - headLength * Math.sin(angle - Math.PI / 6));
+    ctx.moveTo(x2, y2);
+    ctx.lineTo(x2 - headLength * Math.cos(angle + Math.PI / 6), y2 - headLength * Math.sin(angle + Math.PI / 6));
+    ctx.stroke();
+
+    const labelAngle = angle;
+    const labelDist = Math.max(15, Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2) + 5);
+    const labelX = center + labelDist * Math.cos(labelAngle);
+    const labelY = center + labelDist * Math.sin(labelAngle);
+    
+    ctx.fillStyle = color;
+    ctx.font = 'bold 12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, labelX, labelY);
+  }
+
   function draw() {
     if (!canvasRef) return;
     const ctx = canvasRef.getContext('2d');
@@ -292,6 +329,16 @@ function EllipseCanvas(props: { analysis: AnalysisResult | null }) {
     ctx.stroke();
 
     ctx.restore();
+
+    const { v1, v2 } = props.analysis.eigenvectors;
+    if (v1) {
+      const v1Scale = Math.sqrt(Math.abs(props.analysis.eigenvalues.lambda1)) * scale / 2;
+      drawArrow(ctx, center - v1[0] * v1Scale, center - v1[1] * v1Scale, center + v1[0] * v1Scale, center + v1[1] * v1Scale, '#f97316', 'v₁');
+    }
+    if (v2) {
+      const v2Scale = Math.sqrt(Math.abs(props.analysis.eigenvalues.lambda2)) * scale / 2;
+      drawArrow(ctx, center - v2[0] * v2Scale, center - v2[1] * v2Scale, center + v2[0] * v2Scale, center + v2[1] * v2Scale, '#a855f7', 'v₂');
+    }
 
     ctx.fillStyle = '#374151';
     ctx.font = '10px sans-serif';
