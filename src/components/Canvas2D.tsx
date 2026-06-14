@@ -6,6 +6,7 @@ interface Canvas2DProps {
   matrix: Matrix2;
   onApplyTransform: () => void;
   transformHistory: Matrix2[];
+  activeHistoryIndex: number;
   customVectors: Vector2[];
   onAddVector: (v: Vector2) => void;
   onUpdateVector: (index: number, v: Vector2) => void;
@@ -237,6 +238,35 @@ export function Canvas2D(props: Canvas2DProps) {
     });
   }
   
+  function getCurrentTransformState() {
+    const activeIdx = props.activeHistoryIndex;
+    const history = props.transformHistory;
+    
+    if (activeIdx < 0 || activeIdx >= history.length) {
+      return {
+        vectors: [[1, 0] as Vector2, [0, 1] as Vector2],
+        square: [[0, 0], [1, 0], [1, 1], [0, 1]] as Vector2[],
+        customVectors: props.customVectors,
+      };
+    }
+    
+    const applyHistory = history.slice(0, activeIdx + 1);
+    
+    const vectors = [[1, 0] as Vector2, [0, 1] as Vector2].map(v =>
+      applyHistory.reduce((acc, m) => mat2MulVec2(m, acc), v)
+    );
+    
+    const square = ([[0, 0], [1, 0], [1, 1], [0, 1]] as Vector2[]).map(v =>
+      applyHistory.reduce((acc, m) => mat2MulVec2(m, acc), v)
+    );
+    
+    const customVectors = props.customVectors.map(v =>
+      applyHistory.reduce((acc, m) => mat2MulVec2(m, acc), v)
+    );
+    
+    return { vectors, square, customVectors };
+  }
+  
   function draw() {
     const canvas = canvasEl;
     if (!canvas) return;
@@ -255,17 +285,12 @@ export function Canvas2D(props: Canvas2DProps) {
     
     drawEigenvectors(ctx);
     
+    const state = getCurrentTransformState();
     const t = animationProgress();
     
-    const displayVectors = currentVectors().map((v, i) => 
-      lerpVec2(v, transformedVectors()[i], t)
-    );
-    const displaySquare = currentSquare().map((p, i) => 
-      lerpVec2(p, transformedSquare()[i], t)
-    );
-    const displayCustomVectors = props.customVectors.map((v, i) => 
-      lerpVec2(v, transformedCustomVectors()[i] || v, t)
-    );
+    const displayVectors = state.vectors;
+    const displaySquare = state.square;
+    const displayCustomVectors = state.customVectors;
     
     drawSquare(ctx, displaySquare, 'rgba(34, 197, 94, 0.3)', 0.5);
     
@@ -273,24 +298,6 @@ export function Canvas2D(props: Canvas2DProps) {
     drawVector(ctx, [0, 0], displayVectors[1], '#ef4444', 'e₂');
     
     drawCustomVectors(ctx, displayCustomVectors, '#f59e0b');
-    
-    props.transformHistory.slice(-4).forEach((_, idx) => {
-      const alpha = (idx + 1) / 4 * 0.3;
-      const prevVectors = props.transformHistory.slice(0, idx + 1).reduce(
-        (acc, m) => acc.map(v => mat2MulVec2(m, v)),
-        [[1, 0] as Vector2, [0, 1] as Vector2]
-      );
-      const prevSquare = [[0, 0], [1, 0], [1, 1], [0, 1]].map(v => 
-        props.transformHistory.slice(0, idx + 1).reduce(
-          (acc, m) => mat2MulVec2(m, acc),
-          v as Vector2
-        )
-      );
-      
-      drawSquare(ctx, prevSquare, `rgba(156, 163, 175, ${alpha})`, alpha);
-      drawVector(ctx, [0, 0], prevVectors[0], `rgba(59, 130, 246, ${alpha})`, '', false);
-      drawVector(ctx, [0, 0], prevVectors[1], `rgba(239, 68, 68, ${alpha})`, '', false);
-    });
   }
   
   function startAnimation() {

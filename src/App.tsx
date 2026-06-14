@@ -7,20 +7,34 @@ import { PresetLibrary } from './components/PresetLibrary';
 import { MatrixInfo } from './components/MatrixInfo';
 import { EigenvalueExplorer } from './components/EigenvalueExplorer';
 import { MatrixDecomposition } from './components/MatrixDecomposition';
+import { TransformTimeline } from './components/TransformTimeline';
 
 function App() {
   const [dimensions, setDimensions] = createSignal<2 | 3>(2);
   const [matrix2D, setMatrix2D] = createSignal<Matrix2>([1, 0, 0, 1]);
   const [matrix3D, setMatrix3D] = createSignal<Matrix3>([1, 0, 0, 0, 1, 0, 0, 0, 1]);
   const [transformHistory, setTransformHistory] = createSignal<Matrix2[]>([]);
+  const [activeHistoryIndex, setActiveHistoryIndex] = createSignal(-1);
   const [customVectors, setCustomVectors] = createSignal<Vector2[]>([]);
   const [isAnimating, setIsAnimating] = createSignal(false);
   const [showEigenvectors, setShowEigenvectors] = createSignal(false);
   const [showNullSpace, setShowNullSpace] = createSignal(false);
   
+  const maxHistory = 8;
+  
   function handleApplyTransform() {
     if (dimensions() === 2) {
-      setTransformHistory(prev => [...prev, matrix2D()]);
+      setTransformHistory(prev => {
+        const newHistory = [...prev, matrix2D()];
+        if (newHistory.length > maxHistory) {
+          return newHistory.slice(-maxHistory);
+        }
+        return newHistory;
+      });
+      setActiveHistoryIndex(prev => {
+        const newIndex = prev >= 0 ? prev + 1 : 0;
+        return Math.min(newIndex, maxHistory - 1);
+      });
     }
   }
   
@@ -28,8 +42,13 @@ function App() {
     setMatrix2D([1, 0, 0, 1]);
     setMatrix3D([1, 0, 0, 0, 1, 0, 0, 0, 1]);
     setTransformHistory([]);
+    setActiveHistoryIndex(-1);
     setCustomVectors([]);
     setIsAnimating(false);
+  }
+  
+  function handleSelectHistory(index: number) {
+    setActiveHistoryIndex(index);
   }
   
   function handleApply() {
@@ -361,6 +380,7 @@ function App() {
                   matrix={matrix2D()}
                   onApplyTransform={handleApplyTransform}
                   transformHistory={transformHistory()}
+                  activeHistoryIndex={activeHistoryIndex()}
                   customVectors={customVectors()}
                   onAddVector={handleAddVector}
                   onUpdateVector={handleUpdateVector}
@@ -375,6 +395,14 @@ function App() {
                 />
               )}
             </div>
+            
+            {dimensions() === 2 && (
+              <TransformTimeline
+                history={transformHistory()}
+                activeIndex={activeHistoryIndex()}
+                onSelect={handleSelectHistory}
+              />
+            )}
             
             {dimensions() === 2 && customVectors().length > 0 && (
               <div style={{
