@@ -19,6 +19,8 @@ interface TransformScriptEditorProps {
   onReset: () => void;
   onApplyTransform: () => void;
   currentMatrix: Matrix2;
+  script?: string;
+  onScriptChange?: (script: string) => void;
 }
 
 const exampleScripts = {
@@ -46,12 +48,21 @@ scale(0.8, 0.8)`
 };
 
 export function TransformScriptEditor(props: TransformScriptEditorProps) {
-  const [script, setScript] = createSignal('');
+  const [internalScript, setInternalScript] = createSignal('');
   const [errors, setErrors] = createSignal<ScriptError[]>([]);
   const [isPlaying, setIsPlaying] = createSignal(false);
   const [currentLine, setCurrentLine] = createSignal(-1);
   const [summary, setSummary] = createSignal('');
   const [selectedExample, setSelectedExample] = createSignal('');
+
+  const script = () => props.script !== undefined ? props.script : internalScript();
+  const setScript = (s: string) => {
+    if (props.onScriptChange) {
+      props.onScriptChange(s);
+    } else {
+      setInternalScript(s);
+    }
+  };
 
   let timeoutId: number | null = null;
 

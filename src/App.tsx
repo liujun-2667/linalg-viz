@@ -9,6 +9,7 @@ import { EigenvalueExplorer } from './components/EigenvalueExplorer';
 import { MatrixDecomposition } from './components/MatrixDecomposition';
 import { TransformTimeline } from './components/TransformTimeline';
 import { TransformScriptEditor } from './components/TransformScriptEditor';
+import { TransformCompositionAnalysis } from './components/TransformCompositionAnalysis';
 
 function App() {
   const [dimensions, setDimensions] = createSignal<2 | 3>(2);
@@ -20,6 +21,7 @@ function App() {
   const [isAnimating, setIsAnimating] = createSignal(false);
   const [showEigenvectors, setShowEigenvectors] = createSignal(false);
   const [showNullSpace, setShowNullSpace] = createSignal(false);
+  const [script, setScript] = createSignal('');
   
   const maxHistory = 8;
   
@@ -373,7 +375,13 @@ function App() {
                 onReset={handleReset}
                 onApplyTransform={handleApplyTransform}
                 currentMatrix={matrix2D()}
+                script={script()}
+                onScriptChange={setScript}
               />
+            )}
+
+            {dimensions() === 2 && (
+              <TransformCompositionAnalysis script={script()} />
             )}
           </div>
           
