@@ -24,15 +24,17 @@ function App() {
   
   function handleApplyTransform() {
     if (dimensions() === 2) {
+      const currentActiveIdx = activeHistoryIndex();
       setTransformHistory(prev => {
-        const newHistory = [...prev, matrix2D()];
+        const truncatedHistory = currentActiveIdx >= 0 ? prev.slice(0, currentActiveIdx + 1) : prev;
+        const newHistory = [...truncatedHistory, matrix2D()];
         if (newHistory.length > maxHistory) {
           return newHistory.slice(-maxHistory);
         }
         return newHistory;
       });
       setActiveHistoryIndex(prev => {
-        const newIndex = prev >= 0 ? prev + 1 : 0;
+        const newIndex = currentActiveIdx >= 0 ? currentActiveIdx + 1 : 0;
         return Math.min(newIndex, maxHistory - 1);
       });
     }

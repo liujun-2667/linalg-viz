@@ -238,7 +238,7 @@ export function Canvas2D(props: Canvas2DProps) {
     });
   }
   
-  function getCurrentTransformState() {
+  function getBaseTransformState() {
     const activeIdx = props.activeHistoryIndex;
     const history = props.transformHistory;
     
@@ -285,12 +285,32 @@ export function Canvas2D(props: Canvas2DProps) {
     
     drawEigenvectors(ctx);
     
-    const state = getCurrentTransformState();
     const t = animationProgress();
+    const isAnimating = t > 0 && t < 1;
     
-    const displayVectors = state.vectors;
-    const displaySquare = state.square;
-    const displayCustomVectors = state.customVectors;
+    let displayVectors: Vector2[];
+    let displaySquare: Vector2[];
+    let displayCustomVectors: Vector2[];
+    
+    if (isAnimating) {
+      displayVectors = currentVectors().map((v, i) => 
+        lerpVec2(v, transformedVectors()[i], t)
+      );
+      displaySquare = currentSquare().map((p, i) => 
+        lerpVec2(p, transformedSquare()[i], t)
+      );
+      displayCustomVectors = props.customVectors.map((v, i) => 
+        lerpVec2(v, transformedCustomVectors()[i] || v, t)
+      );
+    } else {
+      const state = getBaseTransformState();
+      displayVectors = state.vectors;
+      displaySquare = state.square;
+      displayCustomVectors = state.customVectors;
+      
+      setCurrentVectors(state.vectors);
+      setCurrentSquare(state.square);
+    }
     
     drawSquare(ctx, displaySquare, 'rgba(34, 197, 94, 0.3)', 0.5);
     
