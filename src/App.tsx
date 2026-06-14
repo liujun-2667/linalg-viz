@@ -9,50 +9,50 @@ import { EigenvalueExplorer } from './components/EigenvalueExplorer';
 import { MatrixDecomposition } from './components/MatrixDecomposition';
 
 function App() {
-  const dimensions = createSignal<2 | 3>(2);
-  const matrix2D = createSignal<Matrix2>([1, 0, 0, 1]);
-  const matrix3D = createSignal<Matrix3>([1, 0, 0, 0, 1, 0, 0, 0, 1]);
-  const transformHistory = createSignal<Matrix2[]>([]);
-  const customVectors = createSignal<Vector2[]>([]);
-  const isAnimating = createSignal(false);
-  const showEigenvectors = createSignal(false);
-  const showNullSpace = createSignal(false);
+  const [dimensions, setDimensions] = createSignal<2 | 3>(2);
+  const [matrix2D, setMatrix2D] = createSignal<Matrix2>([1, 0, 0, 1]);
+  const [matrix3D, setMatrix3D] = createSignal<Matrix3>([1, 0, 0, 0, 1, 0, 0, 0, 1]);
+  const [transformHistory, setTransformHistory] = createSignal<Matrix2[]>([]);
+  const [customVectors, setCustomVectors] = createSignal<Vector2[]>([]);
+  const [isAnimating, setIsAnimating] = createSignal(false);
+  const [showEigenvectors, setShowEigenvectors] = createSignal(false);
+  const [showNullSpace, setShowNullSpace] = createSignal(false);
   
   function handleMatrixChange(matrix: Matrix2 | Matrix3) {
     if (dimensions() === 2) {
-      matrix2D(matrix as Matrix2);
+      setMatrix2D(matrix as Matrix2);
     } else {
-      matrix3D(matrix as Matrix3);
+      setMatrix3D(matrix as Matrix3);
     }
   }
   
   function handleApplyTransform() {
     if (dimensions() === 2) {
-      transformHistory(prev => [...prev, matrix2D()]);
+      setTransformHistory(prev => [...prev, matrix2D()]);
     }
   }
   
   function handleReset() {
-    matrix2D([1, 0, 0, 1]);
-    matrix3D([1, 0, 0, 0, 1, 0, 0, 0, 1]);
-    transformHistory([]);
-    customVectors([]);
-    isAnimating(false);
+    setMatrix2D([1, 0, 0, 1]);
+    setMatrix3D([1, 0, 0, 0, 1, 0, 0, 0, 1]);
+    setTransformHistory([]);
+    setCustomVectors([]);
+    setIsAnimating(false);
   }
   
   function handleApply() {
-    isAnimating(true);
+    setIsAnimating(true);
     setTimeout(() => {
-      isAnimating(false);
+      setIsAnimating(false);
     }, 800);
   }
   
   function handleAddVector(v: Vector2) {
-    customVectors(prev => [...prev, v]);
+    setCustomVectors(prev => [...prev, v]);
   }
   
   function handleUpdateVector(index: number, v: Vector2) {
-    customVectors(prev => {
+    setCustomVectors(prev => {
       const newVectors = [...prev];
       newVectors[index] = v;
       return newVectors;
@@ -60,16 +60,16 @@ function App() {
   }
   
   function handleRemoveVector(index: number) {
-    customVectors(prev => prev.filter((_, i) => i !== index));
+    setCustomVectors(prev => prev.filter((_, i) => i !== index));
   }
   
   createEffect(() => {
     if (dimensions() === 2) {
-      matrix2D([1, 0, 0, 1]);
-      transformHistory([]);
-      customVectors([]);
+      setMatrix2D([1, 0, 0, 1]);
+      setTransformHistory([]);
+      setCustomVectors([]);
     } else {
-      matrix3D([1, 0, 0, 0, 1, 0, 0, 0, 1]);
+      setMatrix3D([1, 0, 0, 0, 1, 0, 0, 0, 1]);
     }
   });
   
@@ -127,7 +127,7 @@ function App() {
                 marginBottom: '24px',
               }}>
                 <button
-                  onClick={() => dimensions(2)}
+                  onClick={() => setDimensions(2)}
                   style={{
                     padding: '10px 20px',
                     backgroundColor: dimensions() === 2 ? '#3b82f6' : '#f3f4f6',
@@ -143,7 +143,7 @@ function App() {
                   2D 变换
                 </button>
                 <button
-                  onClick={() => dimensions(3)}
+                  onClick={() => setDimensions(3)}
                   style={{
                     padding: '10px 20px',
                     backgroundColor: dimensions() === 3 ? '#3b82f6' : '#f3f4f6',
@@ -169,13 +169,13 @@ function App() {
                     <MatrixInput
                       dimensions={2}
                       matrix={matrix2D()}
-                      onMatrixChange={(m) => matrix2D(m as Matrix2)}
+                      onMatrixChange={(m) => setMatrix2D(m as Matrix2)}
                     />
                   </div>
                   
                   <PresetLibrary
                     dimensions={2}
-                    onSelect={(m) => matrix2D(m as Matrix2)}
+                    onSelect={(m) => setMatrix2D(m as Matrix2)}
                   />
                   
                   <div style={{
@@ -234,7 +234,7 @@ function App() {
                       <input
                         type="checkbox"
                         checked={showEigenvectors()}
-                        onChange={(e) => showEigenvectors(e.target.checked)}
+                        onChange={(e) => setShowEigenvectors(e.target.checked)}
                         style={{ width: '18px', height: '18px' }}
                       />
                       <span style={{ fontSize: '14px', color: '#374151' }}>显示特征向量</span>
@@ -248,7 +248,7 @@ function App() {
                       <input
                         type="checkbox"
                         checked={showNullSpace()}
-                        onChange={(e) => showNullSpace(e.target.checked)}
+                        onChange={(e) => setShowNullSpace(e.target.checked)}
                         style={{ width: '18px', height: '18px' }}
                       />
                       <span style={{ fontSize: '14px', color: '#374151' }}>显示零空间</span>
@@ -266,13 +266,13 @@ function App() {
                     <MatrixInput
                       dimensions={3}
                       matrix={matrix3D()}
-                      onMatrixChange={(m) => matrix3D(m as Matrix3)}
+                      onMatrixChange={(m) => setMatrix3D(m as Matrix3)}
                     />
                   </div>
                   
                   <PresetLibrary
                     dimensions={3}
-                    onSelect={(m) => matrix3D(m as Matrix3)}
+                    onSelect={(m) => setMatrix3D(m as Matrix3)}
                   />
                   
                   <div style={{
@@ -341,9 +341,9 @@ function App() {
                 <MatrixDecomposition
                   matrix={matrix2D()}
                   onApplyMatrix={(m) => {
-                    matrix2D(m);
-                    isAnimating(true);
-                    setTimeout(() => isAnimating(false), 800);
+                    setMatrix2D(m);
+                    setIsAnimating(true);
+                    setTimeout(() => setIsAnimating(false), 800);
                   }}
                 />
               </div>
@@ -446,7 +446,7 @@ function App() {
               }}>
                 <EigenvalueExplorer
                   onMatrixChange={(m) => {
-                    matrix2D(m);
+                    setMatrix2D(m);
                   }}
                 />
               </div>

@@ -15,16 +15,16 @@ interface Canvas2DProps {
 }
 
 export function Canvas2D(props: Canvas2DProps) {
-  const canvasRef = <canvas ref />;
-  const animationRef = createSignal(0);
-  const currentVectors = createSignal<Vector2[]>([[1, 0], [0, 1]]);
-  const currentSquare = createSignal<Vector2[]>([[0, 0], [1, 0], [1, 1], [0, 1]]);
-  const transformedVectors = createSignal<Vector2[]>([[1, 0], [0, 1]]);
-  const transformedSquare = createSignal<Vector2[]>([[0, 0], [1, 0], [1, 1], [0, 1]]);
-  const transformedCustomVectors = createSignal<Vector2[]>([]);
-  const animationProgress = createSignal(0);
-  const isAnimatingLocal = createSignal(false);
-  const draggingVector = createSignal(-1);
+  let canvasEl: HTMLCanvasElement | undefined;
+  const [animationRef, setAnimationRef] = createSignal(0);
+  const [currentVectors, setCurrentVectors] = createSignal<Vector2[]>([[1, 0], [0, 1]]);
+  const [currentSquare, setCurrentSquare] = createSignal<Vector2[]>([[0, 0], [1, 0], [1, 1], [0, 1]]);
+  const [transformedVectors, setTransformedVectors] = createSignal<Vector2[]>([[1, 0], [0, 1]]);
+  const [transformedSquare, setTransformedSquare] = createSignal<Vector2[]>([[0, 0], [1, 0], [1, 1], [0, 1]]);
+  const [transformedCustomVectors, setTransformedCustomVectors] = createSignal<Vector2[]>([]);
+  const [animationProgress, setAnimationProgress] = createSignal(0);
+  const [isAnimatingLocal, setIsAnimatingLocal] = createSignal(false);
+  const [draggingVector, setDraggingVector] = createSignal(-1);
   
   const gridSize = 5;
   const canvasSize = 500;
@@ -195,8 +195,10 @@ export function Canvas2D(props: Canvas2DProps) {
     let direction: Vector2;
     if (Math.abs(a) > Math.abs(b)) {
       direction = [-b / a, 1];
-    } else {
+    } else if (Math.abs(b) > 1e-10) {
       direction = [1, -a / b];
+    } else {
+      direction = [1, 0];
     }
     
     const len = Math.sqrt(direction[0] ** 2 + direction[1] ** 2);
@@ -221,15 +223,14 @@ export function Canvas2D(props: Canvas2DProps) {
   function drawEigenvectors(ctx: CanvasRenderingContext2D) {
     if (!props.showEigenvectors) return;
     
-    const eigenvalues = eigenvalues2(props.matrix);
-    const eps = 1e-10;
+    const evals = eigenvalues2(props.matrix);
     
-    eigenvalues.forEach((lambda, i) => {
+    evals.forEach((lambda, i) => {
       const vec = eigenvector2(props.matrix, lambda);
       if (!vec) return;
       
       const normalized = normalize(vec);
-      const scaled = [normalized[0] * 2, normalized[1] * 2];
+      const scaled: Vector2 = [normalized[0] * 2, normalized[1] * 2];
       
       const color = i === 0 ? '#8b5cf6' : '#f59e0b';
       drawVector(ctx, [0, 0], scaled, color, `λ${i+1}=${lambda.toFixed(2)}`, false);
@@ -237,7 +238,7 @@ export function Canvas2D(props: Canvas2DProps) {
   }
   
   function draw() {
-    const canvas = canvasRef();
+    const canvas = canvasEl;
     if (!canvas) return;
     
     const ctx = canvas.getContext('2d');
@@ -293,8 +294,8 @@ export function Canvas2D(props: Canvas2DProps) {
   }
   
   function startAnimation() {
-    isAnimatingLocal(true);
-    animationProgress(0);
+    setIsAnimatingLocal(true);
+    setAnimationProgress(0);
     
     const startVectors = [...currentVectors()];
     const startSquare = [...currentSquare()];
@@ -304,9 +305,9 @@ export function Canvas2D(props: Canvas2DProps) {
     const endSquare = startSquare.map(v => mat2MulVec2(props.matrix, v));
     const endCustomVectors = startCustomVectors.map(v => mat2MulVec2(props.matrix, v));
     
-    transformedVectors(endVectors);
-    transformedSquare(endSquare);
-    transformedCustomVectors(endCustomVectors);
+    setTransformedVectors(endVectors);
+    setTransformedSquare(endSquare);
+    setTransformedCustomVectors(endCustomVectors);
     
     const startTime = performance.now();
     const duration = 800;
@@ -316,23 +317,23 @@ export function Canvas2D(props: Canvas2DProps) {
       const t = Math.min(elapsed / duration, 1);
       
       const easeT = 1 - Math.pow(1 - t, 3);
-      animationProgress(easeT);
+      setAnimationProgress(easeT);
       
       if (t < 1) {
-        animationRef(requestAnimationFrame(animate));
+        setAnimationRef(requestAnimationFrame(animate));
       } else {
-        currentVectors(endVectors);
-        currentSquare(endSquare);
-        isAnimatingLocal(false);
+        setCurrentVectors(endVectors);
+        setCurrentSquare(endSquare);
+        setIsAnimatingLocal(false);
         props.onApplyTransform();
       }
     }
     
-    animationRef(requestAnimationFrame(animate));
+    setAnimationRef(requestAnimationFrame(animate));
   }
   
   function handleClick(e: MouseEvent) {
-    const canvas = canvasRef();
+    const canvas = canvasEl;
     if (!canvas) return;
     
     const rect = canvas.getBoundingClientRect();
@@ -346,7 +347,7 @@ export function Canvas2D(props: Canvas2DProps) {
   }
   
   function handleMouseDown(e: MouseEvent) {
-    const canvas = canvasRef();
+    const canvas = canvasEl;
     if (!canvas) return;
     
     const rect = canvas.getBoundingClientRect();
@@ -354,14 +355,10 @@ export function Canvas2D(props: Canvas2DProps) {
     const y = e.clientY - rect.top;
     const clickPos = fromScreen(x, y);
     
-    const displayCustomVectors = props.customVectors.map((v, i) => 
-      transformedCustomVectors()[i] || v
-    );
-    
-    displayCustomVectors.forEach((vec, i) => {
+    props.customVectors.forEach((vec, i) => {
       const dist = Math.sqrt((vec[0] - clickPos[0]) ** 2 + (vec[1] - clickPos[1]) ** 2);
       if (dist < 0.3) {
-        draggingVector(i);
+        setDraggingVector(i);
       }
     });
   }
@@ -369,7 +366,7 @@ export function Canvas2D(props: Canvas2DProps) {
   function handleMouseMove(e: MouseEvent) {
     if (draggingVector() === -1) return;
     
-    const canvas = canvasRef();
+    const canvas = canvasEl;
     if (!canvas) return;
     
     const rect = canvas.getBoundingClientRect();
@@ -381,7 +378,7 @@ export function Canvas2D(props: Canvas2DProps) {
   }
   
   function handleMouseUp() {
-    draggingVector(-1);
+    setDraggingVector(-1);
   }
   
   createEffect(() => {
@@ -401,7 +398,7 @@ export function Canvas2D(props: Canvas2DProps) {
   
   return (
     <canvas
-      ref={canvasRef}
+      ref={canvasEl}
       width={canvasSize}
       height={canvasSize}
       onClick={handleClick}

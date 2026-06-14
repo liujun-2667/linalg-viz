@@ -1,27 +1,27 @@
 import { createSignal, onMount, onCleanup } from 'solid-js';
 import type { Matrix2 } from '../utils/math';
-import { eigenvalues2, mat2MulVec2 } from '../utils/math';
+import { eigenvalues2 } from '../utils/math';
 
 interface EigenvalueExplorerProps {
   onMatrixChange: (matrix: Matrix2) => void;
 }
 
 export function EigenvalueExplorer(props: EigenvalueExplorerProps) {
-  const angle = createSignal(0);
-  const eigenvalueHistory = createSignal<[number, number][]>([]);
-  const canvasRef = <canvas ref />;
+  const [angle, setAngle] = createSignal(0);
+  const [eigenvalueHistory, setEigenvalueHistory] = createSignal<[number, number][]>([]);
+  let canvasEl: HTMLCanvasElement | undefined;
   
   function updateMatrix() {
     const theta = angle() * Math.PI / 180;
     const c = Math.cos(theta);
     const s = Math.sin(theta);
-    const scale = 1.5;
-    const matrix: Matrix2 = [c * scale, -s, s, c * scale];
+    const sc = 1.5;
+    const matrix: Matrix2 = [c * sc, -s, s, c * sc];
     props.onMatrixChange(matrix);
     
-    const eigenvalues = eigenvalues2(matrix);
-    eigenvalueHistory(prev => {
-      const newHistory = [...prev, eigenvalues];
+    const evals = eigenvalues2(matrix);
+    setEigenvalueHistory(prev => {
+      const newHistory = [...prev, evals];
       if (newHistory.length > 72) {
         return newHistory.slice(-72);
       }
@@ -30,7 +30,7 @@ export function EigenvalueExplorer(props: EigenvalueExplorerProps) {
   }
   
   function draw() {
-    const canvas = canvasRef();
+    const canvas = canvasEl;
     if (!canvas) return;
     
     const ctx = canvas.getContext('2d');
@@ -40,7 +40,7 @@ export function EigenvalueExplorer(props: EigenvalueExplorerProps) {
     const height = canvas.height;
     const centerX = width / 2;
     const centerY = height / 2;
-    const scale = 60;
+    const sc = 60;
     
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, width, height);
@@ -69,9 +69,9 @@ export function EigenvalueExplorer(props: EigenvalueExplorerProps) {
     const history = eigenvalueHistory();
     const eps = 1e-10;
     
-    history.forEach((eigenvalues, i) => {
+    history.forEach((evals, i) => {
       const alpha = (i + 1) / history.length;
-      const [lambda1, lambda2] = eigenvalues;
+      const [lambda1, lambda2] = evals;
       
       const trace = (lambda1 + lambda2) / 2;
       const det = lambda1 * lambda2;
@@ -86,12 +86,12 @@ export function EigenvalueExplorer(props: EigenvalueExplorerProps) {
         
         ctx.fillStyle = `rgba(239, 68, 68, ${alpha})`;
         ctx.beginPath();
-        ctx.arc(centerX + real1 * scale, centerY - imag1 * scale, 4 * alpha, 0, Math.PI * 2);
+        ctx.arc(centerX + real1 * sc, centerY - imag1 * sc, 4 * alpha, 0, Math.PI * 2);
         ctx.fill();
         
         ctx.fillStyle = `rgba(59, 130, 246, ${alpha})`;
         ctx.beginPath();
-        ctx.arc(centerX + real2 * scale, centerY - imag2 * scale, 4 * alpha, 0, Math.PI * 2);
+        ctx.arc(centerX + real2 * sc, centerY - imag2 * sc, 4 * alpha, 0, Math.PI * 2);
         ctx.fill();
       }
     });
@@ -100,15 +100,15 @@ export function EigenvalueExplorer(props: EigenvalueExplorerProps) {
       ctx.strokeStyle = 'rgba(139, 92, 246, 0.3)';
       ctx.lineWidth = 2;
       ctx.beginPath();
-      history.forEach((eigenvalues, i) => {
-        const trace = (eigenvalues[0] + eigenvalues[1]) / 2;
-        const det = eigenvalues[0] * eigenvalues[1];
+      history.forEach((evals, i) => {
+        const trace = (evals[0] + evals[1]) / 2;
+        const det = evals[0] * evals[1];
         const discriminant = trace * trace - det;
         
         if (discriminant >= -eps) {
           const sqrtD = Math.sqrt(Math.max(0, discriminant));
-          const x = centerX + trace * scale;
-          const y = centerY - sqrtD * scale;
+          const x = centerX + trace * sc;
+          const y = centerY - sqrtD * sc;
           if (i === 0) {
             ctx.moveTo(x, y);
           } else {
@@ -135,62 +135,62 @@ export function EigenvalueExplorer(props: EigenvalueExplorerProps) {
       
       ctx.fillStyle = '#ef4444';
       ctx.beginPath();
-      ctx.arc(centerX + currentTrace * scale, centerY - sqrtD * scale, 6, 0, Math.PI * 2);
+      ctx.arc(centerX + currentTrace * sc, centerY - sqrtD * sc, 6, 0, Math.PI * 2);
       ctx.fill();
       
       ctx.fillStyle = '#3b82f6';
       ctx.beginPath();
-      ctx.arc(centerX + currentTrace * scale, centerY + sqrtD * scale, 6, 0, Math.PI * 2);
+      ctx.arc(centerX + currentTrace * sc, centerY + sqrtD * sc, 6, 0, Math.PI * 2);
       ctx.fill();
     }
   }
   
-  let animationRef: number;
+  let animRefId: number;
   
   onMount(() => {
     updateMatrix();
     draw();
     
     function animate() {
-      angle((angle() + 1) % 360);
+      setAngle((angle() + 1) % 360);
       updateMatrix();
       draw();
-      animationRef = requestAnimationFrame(animate);
+      animRefId = requestAnimationFrame(animate);
     }
     
-    animationRef = requestAnimationFrame(animate);
+    animRefId = requestAnimationFrame(animate);
     
     onCleanup(() => {
-      cancelAnimationFrame(animationRef);
+      cancelAnimationFrame(animRefId);
     });
   });
   
   return (
-    <div style={{ padding: '12px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
-      <h3 style={{ marginBottom: '12px', fontSize: '14px', fontWeight: '600', color: '#374151' }}>
+    <div style={{ padding: '12px', "background-color": '#f9fafb', "border-radius": '8px' }}>
+      <h3 style={{ "margin-bottom": '12px', "font-size": '14px', "font-weight": '600', color: '#374151' }}>
         特征值轨迹探索
       </h3>
       <canvas
-        ref={canvasRef}
+        ref={canvasEl}
         width={200}
         height={200}
         style={{
           border: '1px solid #e5e7eb',
-          borderRadius: '4px',
-          marginBottom: '12px',
+          "border-radius": '4px',
+          "margin-bottom": '12px',
         }}
       />
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-        <span style={{ fontSize: '12px', color: '#6b7280' }}>旋转角度:</span>
+      <div style={{ display: 'flex', "align-items": 'center', gap: '12px' }}>
+        <span style={{ "font-size": '12px', color: '#6b7280' }}>旋转角度:</span>
         <input
           type="range"
           min="0"
           max="360"
           value={angle()}
-          onChange={(e) => angle(parseInt(e.target.value))}
-          style={{ flex: 1 }}
+          onInput={(e) => setAngle(parseInt((e.target as HTMLInputElement).value))}
+          style={{ flex: '1' }}
         />
-        <span style={{ fontSize: '12px', color: '#374151', width: '50px', textAlign: 'right' }}>
+        <span style={{ "font-size": '12px', color: '#374151', width: '50px', "text-align": 'right' }}>
           {angle()}°
         </span>
       </div>

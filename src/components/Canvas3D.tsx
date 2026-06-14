@@ -1,4 +1,4 @@
-import { onMount, onCleanup, createSignal } from 'solid-js';
+import { onMount, onCleanup, createSignal, createEffect } from 'solid-js';
 import type { Matrix3, Vector3 } from '../utils/math';
 import { mat3MulVec3, lerpVec3 } from '../utils/math';
 
@@ -8,39 +8,35 @@ interface Canvas3DProps {
 }
 
 export function Canvas3D(props: Canvas3DProps) {
-  const canvasRef = <canvas ref />;
-  const animationRef = createSignal(0);
-  const rotationX = createSignal(0.5);
-  const rotationY = createSignal(0.5);
-  const scale = createSignal(1);
-  const usePerspective = createSignal(true);
-  const isDragging = createSignal(false);
-  const lastMouseX = createSignal(0);
-  const lastMouseY = createSignal(0);
+  let canvasEl: HTMLCanvasElement | undefined;
+  const [animationRefId, setAnimationRefId] = createSignal(0);
+  const [rotationX, setRotationX] = createSignal(0.5);
+  const [rotationY, setRotationY] = createSignal(0.5);
+  const [viewScale, setViewScale] = createSignal(1);
+  const [usePerspective, setUsePerspective] = createSignal(true);
+  const [isDragging, setIsDragging] = createSignal(false);
+  const [lastMouseX, setLastMouseX] = createSignal(0);
+  const [lastMouseY, setLastMouseY] = createSignal(0);
   
-  const currentCube = [
+  const [currentCube, setCurrentCube] = createSignal<Vector3[]>([
     [-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1],
     [-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1]
-  ] as Vector3[];
-  const currentVectors = [[1, 0, 0] as Vector3, [0, 1, 0] as Vector3, [0, 0, 1] as Vector3];
-  const transformedCube = [
+  ]);
+  const [currentVectors, setCurrentVectors] = createSignal<Vector3[]>([[1, 0, 0], [0, 1, 0], [0, 0, 1]]);
+  const [transformedCube, setTransformedCube] = createSignal<Vector3[]>([
     [-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1],
     [-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1]
-  ] as Vector3[];
-  const transformedVectors = [[1, 0, 0] as Vector3, [0, 1, 0] as Vector3, [0, 0, 1] as Vector3];
-  const animationProgress = createSignal(0);
-  const isAnimatingLocal = createSignal(false);
+  ]);
+  const [transformedVectors, setTransformedVectors] = createSignal<Vector3[]>([[1, 0, 0], [0, 1, 0], [0, 0, 1]]);
+  const [animationProgress, setAnimationProgress] = createSignal(0);
+  const [isAnimatingLocal, setIsAnimatingLocal] = createSignal(false);
   
   const canvasSize = 500;
   const center = canvasSize / 2;
   const fov = 300;
   
   function project(v: Vector3): [number, number] {
-    const [x, y, z] = v;
-    
-    let sx = x;
-    let sy = y;
-    let sz = z;
+    let [sx, sy, sz] = v;
     
     const cx = Math.cos(rotationX());
     const sxSin = Math.sin(rotationX());
@@ -55,10 +51,10 @@ export function Canvas3D(props: Canvas3DProps) {
     sx = tempX;
     
     if (usePerspective()) {
-      const scaleFactor = fov / (fov + sz * scale() * 50);
-      return [center + sx * scale() * 50 * scaleFactor, center - sy * scale() * 50 * scaleFactor];
+      const scaleFactor = fov / (fov + sz * viewScale() * 50);
+      return [center + sx * viewScale() * 50 * scaleFactor, center - sy * viewScale() * 50 * scaleFactor];
     } else {
-      return [center + sx * scale() * 50, center - sy * scale() * 50];
+      return [center + sx * viewScale() * 50, center - sy * viewScale() * 50];
     }
   }
   
@@ -172,7 +168,7 @@ export function Canvas3D(props: Canvas3DProps) {
   }
   
   function draw() {
-    const canvas = canvasRef();
+    const canvas = canvasEl;
     if (!canvas) return;
     
     const ctx = canvas.getContext('2d');
@@ -200,8 +196,8 @@ export function Canvas3D(props: Canvas3DProps) {
   }
   
   function startAnimation() {
-    isAnimatingLocal(true);
-    animationProgress(0);
+    setIsAnimatingLocal(true);
+    setAnimationProgress(0);
     
     const startCube = [...currentCube()];
     const startVectors = [...currentVectors()];
@@ -209,8 +205,8 @@ export function Canvas3D(props: Canvas3DProps) {
     const endCube = startCube.map(v => mat3MulVec3(props.matrix, v));
     const endVectors = startVectors.map(v => mat3MulVec3(props.matrix, v));
     
-    transformedCube(endCube);
-    transformedVectors(endVectors);
+    setTransformedCube(endCube);
+    setTransformedVectors(endVectors);
     
     const startTime = performance.now();
     const duration = 800;
@@ -220,24 +216,24 @@ export function Canvas3D(props: Canvas3DProps) {
       const t = Math.min(elapsed / duration, 1);
       
       const easeT = 1 - Math.pow(1 - t, 3);
-      animationProgress(easeT);
+      setAnimationProgress(easeT);
       
       if (t < 1) {
-        animationRef(requestAnimationFrame(animate));
+        setAnimationRefId(requestAnimationFrame(animate));
       } else {
-        currentCube(endCube);
-        currentVectors(endVectors);
-        isAnimatingLocal(false);
+        setCurrentCube(endCube);
+        setCurrentVectors(endVectors);
+        setIsAnimatingLocal(false);
       }
     }
     
-    animationRef(requestAnimationFrame(animate));
+    setAnimationRefId(requestAnimationFrame(animate));
   }
   
   function handleMouseDown(e: MouseEvent) {
-    isDragging(true);
-    lastMouseX(e.clientX);
-    lastMouseY(e.clientY);
+    setIsDragging(true);
+    setLastMouseX(e.clientX);
+    setLastMouseY(e.clientY);
   }
   
   function handleMouseMove(e: MouseEvent) {
@@ -246,49 +242,51 @@ export function Canvas3D(props: Canvas3DProps) {
     const deltaX = e.clientX - lastMouseX();
     const deltaY = e.clientY - lastMouseY();
     
-    rotationY(rotationY() + deltaX * 0.01);
-    rotationX(rotationX() + deltaY * 0.01);
+    setRotationY(rotationY() + deltaX * 0.01);
+    setRotationX(rotationX() + deltaY * 0.01);
     
-    lastMouseX(e.clientX);
-    lastMouseY(e.clientY);
+    setLastMouseX(e.clientX);
+    setLastMouseY(e.clientY);
   }
   
   function handleMouseUp() {
-    isDragging(false);
+    setIsDragging(false);
   }
   
   function handleWheel(e: WheelEvent) {
     e.preventDefault();
     const delta = e.deltaY > 0 ? 0.9 : 1.1;
-    scale(Math.max(0.3, Math.min(3, scale() * delta)));
+    setViewScale(Math.max(0.3, Math.min(3, viewScale() * delta)));
   }
+  
+  createEffect(() => {
+    if (props.isAnimating && !isAnimatingLocal()) {
+      startAnimation();
+    }
+  });
   
   onMount(() => {
     draw();
     const interval = setInterval(draw, 16);
     
-    const canvas = canvasRef();
+    const canvas = canvasEl;
     if (canvas) {
       canvas.addEventListener('wheel', handleWheel, { passive: false });
     }
     
     onCleanup(() => {
       clearInterval(interval);
-      cancelAnimationFrame(animationRef());
+      cancelAnimationFrame(animationRefId());
       if (canvas) {
         canvas.removeEventListener('wheel', handleWheel);
       }
     });
   });
   
-  if (props.isAnimating && !isAnimatingLocal()) {
-    startAnimation();
-  }
-  
   return (
     <div style={{ position: 'relative' }}>
       <canvas
-        ref={canvasRef}
+        ref={canvasEl}
         width={canvasSize}
         height={canvasSize}
         onMouseDown={handleMouseDown}
@@ -302,11 +300,11 @@ export function Canvas3D(props: Canvas3DProps) {
         }}
       />
       <button
-        onClick={() => usePerspective(!usePerspective())}
+        onClick={() => setUsePerspective(!usePerspective())}
         style={{
           position: 'absolute',
-          top: 10,
-          right: 10,
+          top: '10px',
+          right: '10px',
           padding: '5px 10px',
           backgroundColor: usePerspective() ? '#3b82f6' : '#6b7280',
           color: 'white',
