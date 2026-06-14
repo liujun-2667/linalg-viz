@@ -197,6 +197,10 @@ export function TransformScriptEditor(props: TransformScriptEditorProps) {
       }
 
       setCurrentLine(cmd.line);
+      
+      await new Promise(resolve => {
+        timeoutId = window.setTimeout(resolve, 50);
+      });
 
       if (cmd.type === 'reset') {
         props.onReset();
