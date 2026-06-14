@@ -1,4 +1,4 @@
-import { createSignal, createEffect } from 'solid-js';
+import { createSignal, createEffect, createMemo } from 'solid-js';
 import type { Matrix2 } from '../utils/math';
 import { det2 } from '../utils/math';
 
@@ -252,7 +252,13 @@ export function TransformScriptEditor(props: TransformScriptEditorProps) {
     }
   });
 
-  const lines = script().split('\n');
+  const lines = createMemo(() => script().split('\n'));
+  const lineHeight = 24;
+  const lineNumberWidth = 40;
+
+  function getLineTop(lineNum: number): number {
+    return (lineNum - 1) * lineHeight;
+  }
 
   return (
     <div style={{
@@ -290,73 +296,131 @@ export function TransformScriptEditor(props: TransformScriptEditorProps) {
       </div>
 
       <div style={{
-        position: 'relative',
         border: '1px solid #d1d5db',
         borderRadius: '8px',
         overflow: 'hidden',
+        backgroundColor: '#ffffff',
       }}>
         <div style={{
           display: 'flex',
-          minHeight: '200px',
+          minHeight: '240px',
+          maxHeight: '400px',
         }}>
-          <div style={{
-            padding: '8px 4px',
-            backgroundColor: '#f9fafb',
-            borderRight: '1px solid #d1d5db',
-            textAlign: 'right',
-            userSelect: 'none',
-            fontSize: '12px',
-            color: '#6b7280',
-            lineHeight: '20px',
-          }}>
-            {lines.map((_, i) => (
+          {/* 行号区域 */}
+          <div
+            style={{
+              width: `${lineNumberWidth}px`,
+              backgroundColor: '#f9fafb',
+              borderRight: '1px solid #d1d5db',
+              padding: '8px 0',
+              userSelect: 'none',
+              fontSize: '14px',
+              fontFamily: 'monospace',
+              lineHeight: `${lineHeight}px`,
+              color: '#6b7280',
+              overflow: 'hidden',
+              flexShrink: 0,
+            }}
+          >
+            {lines().map((_, i) => (
               <div
                 key={i}
                 style={{
+                  height: `${lineHeight}px`,
                   paddingRight: '8px',
-                  backgroundColor: currentLine() === i + 1 ? '#dbeafe' : 'transparent',
-                  color: currentLine() === i + 1 ? '#1d4ed8' : '#6b7280',
+                  textAlign: 'right',
+                  backgroundColor: currentLine() === i + 1 ? '#3b82f6' : 'transparent',
+                  color: currentLine() === i + 1 ? '#ffffff' : '#6b7280',
                   fontWeight: currentLine() === i + 1 ? '600' : 'normal',
+                  boxSizing: 'border-box',
                 }}
               >
                 {i + 1}
               </div>
             ))}
-            {lines.length === 0 && <div style={{ paddingRight: '8px' }}>1</div>}
+            {lines().length === 0 && (
+              <div style={{ height: `${lineHeight}px`, paddingRight: '8px', textAlign: 'right' }}>
+                1
+              </div>
+            )}
           </div>
-          <div style={{ flex: 1, position: 'relative' }}>
+
+          {/* 编辑区域 */}
+          <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+            {/* 错误标记层 */}
+            <div style={{
+              position: 'absolute',
+              top: '8px',
+              left: '0',
+              width: '4px',
+              pointerEvents: 'none',
+              zIndex: 1,
+            }}>
+              {errors().map((error) => (
+                <div
+                  key={error.line}
+                  style={{
+                    position: 'absolute',
+                    top: `${getLineTop(error.line)}px`,
+                    width: '4px',
+                    height: `${lineHeight}px`,
+                    backgroundColor: '#ef4444',
+                    left: '0',
+                  }}
+                />
+              ))}
+              {/* 当前执行行高亮 */}
+              {currentLine() > 0 && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: `${getLineTop(currentLine())}px`,
+                    left: '-8px',
+                    width: 'calc(100% + 16px)',
+                    height: `${lineHeight}px`,
+                    backgroundColor: 'rgba(59, 130, 246, 0.15)',
+                    borderLeft: '2px solid #3b82f6',
+                    pointerEvents: 'none',
+                  }}
+                />
+              )}
+            </div>
+
             <textarea
               value={script()}
               onChange={(e) => setScript(e.target.value)}
               disabled={isPlaying()}
-              placeholder={`# 变换脚本编辑器\n# 支持的指令:\n# rotate(角度) - 旋转\n# scale(x,y) - 缩放\n# shear(h|v,量) - 剪切\n# reflect(x|y) - 反射\n# matrix(a,b,c,d) - 自定义矩阵\n# wait(毫秒) - 等待\n# reset - 重置\n# 以#开头的行为注释`}
+              spellcheck={false}
+              placeholder={`# 变换脚本编辑器
+# 支持的指令:
+# rotate(角度) - 旋转
+# scale(x,y) - 缩放
+# shear(h|v,量) - 剪切
+# reflect(x|y) - 反射
+# matrix(a,b,c,d) - 自定义矩阵
+# wait(毫秒) - 等待
+# reset - 重置
+# 以#开头的行为注释`}
               style={{
                 width: '100%',
-                minHeight: '200px',
+                height: '100%',
+                minHeight: '240px',
+                maxHeight: '400px',
                 padding: '8px',
+                paddingLeft: '16px',
                 border: 'none',
                 outline: 'none',
-                resize: 'vertical',
+                resize: 'none',
                 fontFamily: 'monospace',
                 fontSize: '14px',
-                lineHeight: '20px',
-                backgroundColor: isPlaying() ? '#f9fafb' : 'white',
+                lineHeight: `${lineHeight}px`,
+                backgroundColor: isPlaying() ? '#f9fafb' : '#ffffff',
                 color: '#374151',
+                boxSizing: 'border-box',
+                position: 'relative',
+                zIndex: 0,
               }}
             />
-            {errors().map((error) => (
-              <div
-                key={error.line}
-                style={{
-                  position: 'absolute',
-                  left: '0',
-                  top: `${(error.line - 1) * 20 + 8}px`,
-                  width: '4px',
-                  height: '20px',
-                  backgroundColor: '#ef4444',
-                }}
-              />
-            ))}
           </div>
         </div>
       </div>
