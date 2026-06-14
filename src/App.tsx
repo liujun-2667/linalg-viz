@@ -8,6 +8,7 @@ import { MatrixInfo } from './components/MatrixInfo';
 import { EigenvalueExplorer } from './components/EigenvalueExplorer';
 import { MatrixDecomposition } from './components/MatrixDecomposition';
 import { TransformTimeline } from './components/TransformTimeline';
+import { TransformScriptEditor } from './components/TransformScriptEditor';
 
 function App() {
   const [dimensions, setDimensions] = createSignal<2 | 3>(2);
@@ -360,6 +361,19 @@ function App() {
                   }}
                 />
               </div>
+            )}
+            
+            {dimensions() === 2 && (
+              <TransformScriptEditor
+                onApplyMatrix={(m) => {
+                  setMatrix2D(m);
+                  setIsAnimating(true);
+                  setTimeout(() => setIsAnimating(false), 800);
+                }}
+                onReset={handleReset}
+                onApplyTransform={handleApplyTransform}
+                currentMatrix={matrix2D()}
+              />
             )}
           </div>
           
