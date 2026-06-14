@@ -1,4 +1,4 @@
-import { createSignal, createMemo, onMount } from 'solid-js';
+import { createSignal, createMemo, onMount, createEffect } from 'solid-js';
 import type { Matrix2, Vector2 } from '../utils/math';
 import { mat2MulMat2, det2, transpose2, isOrthogonal2, isDiagonal2, normalize } from '../utils/math';
 
@@ -254,10 +254,11 @@ function EllipseCanvas(props: { analysis: AnalysisResult | null }) {
   const center = size / 2;
   const scale = 80;
 
-  function drawArrow(ctx: CanvasRenderingContext2D, x1: number, y1: number, x2: number, y2: number, color: string, label: string) {
+  function drawArrow(ctx: CanvasRenderingContext2D, x1: number, y1: number, x2: number, y2: number, color: string, label: string, inward: boolean) {
     const headLength = 10;
     const angle = Math.atan2(y2 - y1, x2 - x1);
-    
+    const arrowLen = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+
     ctx.strokeStyle = color;
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -272,16 +273,31 @@ function EllipseCanvas(props: { analysis: AnalysisResult | null }) {
     ctx.lineTo(x2 - headLength * Math.cos(angle + Math.PI / 6), y2 - headLength * Math.sin(angle + Math.PI / 6));
     ctx.stroke();
 
-    const labelAngle = angle;
-    const labelDist = Math.max(15, Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2) + 5);
-    const labelX = center + labelDist * Math.cos(labelAngle);
-    const labelY = center + labelDist * Math.sin(labelAngle);
-    
+    let labelX: number, labelY: number;
+    if (inward) {
+      labelX = (x1 + x2) / 2 - Math.cos(angle) * 15;
+      labelY = (y1 + y2) / 2 - Math.sin(angle) * 15;
+    } else {
+      const labelDist = Math.max(15, arrowLen / 2 + 5);
+      labelX = center + labelDist * Math.cos(angle);
+      labelY = center + labelDist * Math.sin(angle);
+    }
+
     ctx.fillStyle = color;
     ctx.font = 'bold 12px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(label, labelX, labelY);
+
+    ctx.save();
+    ctx.translate(labelX, labelY);
+    const rotAngle = angle + Math.PI / 2;
+    if (Math.abs(rotAngle) > Math.PI / 2 && Math.abs(rotAngle) < Math.PI * 1.5) {
+      ctx.rotate(rotAngle + Math.PI);
+    } else {
+      ctx.rotate(rotAngle);
+    }
+    ctx.fillText(label, 0, 0);
+    ctx.restore();
   }
 
   function draw() {
@@ -333,11 +349,21 @@ function EllipseCanvas(props: { analysis: AnalysisResult | null }) {
     const { v1, v2 } = props.analysis.eigenvectors;
     if (v1) {
       const v1Scale = Math.sqrt(Math.abs(props.analysis.eigenvalues.lambda1)) * scale / 2;
-      drawArrow(ctx, center - v1[0] * v1Scale, center - v1[1] * v1Scale, center + v1[0] * v1Scale, center + v1[1] * v1Scale, '#f97316', 'v₁');
+      const x1 = center - v1[0] * v1Scale;
+      const y1 = center - v1[1] * v1Scale;
+      const x2 = center + v1[0] * v1Scale;
+      const y2 = center + v1[1] * v1Scale;
+      const isAxisAligned = Math.abs(v1[0]) > 0.99 || Math.abs(v1[1]) > 0.99;
+      drawArrow(ctx, x1, y1, x2, y2, '#f97316', 'v₁', isAxisAligned);
     }
     if (v2) {
       const v2Scale = Math.sqrt(Math.abs(props.analysis.eigenvalues.lambda2)) * scale / 2;
-      drawArrow(ctx, center - v2[0] * v2Scale, center - v2[1] * v2Scale, center + v2[0] * v2Scale, center + v2[1] * v2Scale, '#a855f7', 'v₂');
+      const x1 = center - v2[0] * v2Scale;
+      const y1 = center - v2[1] * v2Scale;
+      const x2 = center + v2[0] * v2Scale;
+      const y2 = center + v2[1] * v2Scale;
+      const isAxisAligned = Math.abs(v2[0]) > 0.99 || Math.abs(v2[1]) > 0.99;
+      drawArrow(ctx, x1, y1, x2, y2, '#a855f7', 'v₂', isAxisAligned);
     }
 
     ctx.fillStyle = '#374151';
@@ -349,6 +375,11 @@ function EllipseCanvas(props: { analysis: AnalysisResult | null }) {
   }
 
   onMount(() => {
+    draw();
+  });
+
+  createEffect(() => {
+    props.analysis;
     draw();
   });
 
