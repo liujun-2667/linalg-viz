@@ -18,14 +18,6 @@ function App() {
   const [showEigenvectors, setShowEigenvectors] = createSignal(false);
   const [showNullSpace, setShowNullSpace] = createSignal(false);
   
-  function handleMatrixChange(matrix: Matrix2 | Matrix3) {
-    if (dimensions() === 2) {
-      setMatrix2D(matrix as Matrix2);
-    } else {
-      setMatrix3D(matrix as Matrix3);
-    }
-  }
-  
   function handleApplyTransform() {
     if (dimensions() === 2) {
       setTransformHistory(prev => [...prev, matrix2D()]);
@@ -445,9 +437,8 @@ function App() {
                 boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
               }}>
                 <EigenvalueExplorer
-                  onMatrixChange={(m) => {
-                    setMatrix2D(m);
-                  }}
+                  externalMatrix={matrix2D()}
+                  onMatrixChange={(m) => setMatrix2D(m)}
                 />
               </div>
             )}
