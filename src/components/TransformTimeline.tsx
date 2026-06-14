@@ -1,4 +1,4 @@
-import { createSignal } from 'solid-js';
+import { createSignal, createMemo } from 'solid-js';
 import type { Matrix2 } from '../utils/math';
 import { det2 } from '../utils/math';
 
@@ -51,10 +51,14 @@ export function TransformTimeline(props: TransformTimelineProps) {
   const [tooltipPosition, setTooltipPosition] = createSignal({ x: 0, y: 0 });
 
   const maxHistory = 8;
-  const displayHistory = props.history.slice(-maxHistory);
-  const adjustedActiveIndex = props.activeIndex >= 0 && props.activeIndex >= props.history.length - maxHistory 
-    ? props.activeIndex - (props.history.length - maxHistory) 
-    : props.activeIndex;
+  
+  const displayHistory = createMemo(() => props.history.slice(-maxHistory));
+  const adjustedActiveIndex = createMemo(() => {
+    if (props.activeIndex >= 0 && props.activeIndex >= props.history.length - maxHistory) {
+      return props.activeIndex - (props.history.length - maxHistory);
+    }
+    return props.activeIndex;
+  });
 
   function handleMouseEnter(e: MouseEvent, matrix: Matrix2) {
     const rect = (e.target as HTMLElement).getBoundingClientRect();
@@ -100,7 +104,7 @@ export function TransformTimeline(props: TransformTimelineProps) {
           color: '#374151',
           margin: 0,
         }}>
-          变换历史 ({displayHistory.length}/{maxHistory})
+          变换历史 ({displayHistory().length}/{maxHistory})
         </h3>
         {props.history.length > 0 && (
           <button
@@ -135,7 +139,7 @@ export function TransformTimeline(props: TransformTimelineProps) {
         padding: '10px 0',
         overflowX: 'auto',
       }}>
-        {displayHistory.length === 0 ? (
+        {displayHistory().length === 0 ? (
           <span style={{
             color: '#9ca3af',
             fontSize: '14px',
@@ -143,9 +147,9 @@ export function TransformTimeline(props: TransformTimelineProps) {
             暂无变换记录，点击"应用变换"开始记录
           </span>
         ) : (
-          displayHistory.map((matrix, index) => {
-            const isActive = index === adjustedActiveIndex;
-            const isGrayed = adjustedActiveIndex >= 0 && index > adjustedActiveIndex;
+          displayHistory().map((matrix, index) => {
+            const isActive = index === adjustedActiveIndex();
+            const isGrayed = adjustedActiveIndex() >= 0 && index > adjustedActiveIndex();
             
             return (
               <div key={index} style={{ display: 'flex', alignItems: 'center' }}>

@@ -285,14 +285,14 @@ export function Canvas2D(props: Canvas2DProps) {
     
     drawEigenvectors(ctx);
     
+    const animating = isAnimatingLocal();
     const t = animationProgress();
-    const isAnimating = t > 0 && t < 1;
     
     let displayVectors: Vector2[];
     let displaySquare: Vector2[];
     let displayCustomVectors: Vector2[];
     
-    if (isAnimating) {
+    if (animating) {
       displayVectors = currentVectors().map((v, i) => 
         lerpVec2(v, transformedVectors()[i], t)
       );
@@ -307,9 +307,6 @@ export function Canvas2D(props: Canvas2DProps) {
       displayVectors = state.vectors;
       displaySquare = state.square;
       displayCustomVectors = state.customVectors;
-      
-      setCurrentVectors(state.vectors);
-      setCurrentSquare(state.square);
     }
     
     drawSquare(ctx, displaySquare, 'rgba(34, 197, 94, 0.3)', 0.5);
@@ -324,9 +321,13 @@ export function Canvas2D(props: Canvas2DProps) {
     setIsAnimatingLocal(true);
     setAnimationProgress(0);
     
-    const startVectors = [...currentVectors()];
-    const startSquare = [...currentSquare()];
-    const startCustomVectors = [...props.customVectors];
+    const baseState = getBaseTransformState();
+    const startVectors = baseState.vectors;
+    const startSquare = baseState.square;
+    const startCustomVectors = baseState.customVectors;
+    
+    setCurrentVectors(startVectors);
+    setCurrentSquare(startSquare);
     
     const endVectors = startVectors.map(v => mat2MulVec2(props.matrix, v));
     const endSquare = startSquare.map(v => mat2MulVec2(props.matrix, v));
@@ -352,6 +353,7 @@ export function Canvas2D(props: Canvas2DProps) {
         setCurrentVectors(endVectors);
         setCurrentSquare(endSquare);
         setIsAnimatingLocal(false);
+        setAnimationProgress(0);
         props.onApplyTransform();
       }
     }
